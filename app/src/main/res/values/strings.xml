@@ -1,3 +1,7 @@
 <resources>
     <string name="app_name">S2CC</string>
+    <string name="starting">STARTING &#8230;</string>
+    <string name="stopping">STOPPING &#8230;</string>
+    <string name="start">START RECOGNITION"</string>
+    <string name="stop">STOP RECOGNITION"</string>
 </resources>
