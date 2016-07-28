@@ -9,9 +9,12 @@ import android.speech.SpeechRecognizer;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.KeyEvent;
 import android.view.View;
+import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
-import android.widget.TextView;
+
+import com.wefika.flowlayout.FlowLayout;
 
 import java.util.ArrayList;
 
@@ -31,9 +34,54 @@ public class RecognitionActivity extends AppCompatActivity implements Recognitio
 	private SpeechRecognizer speech_recognizer;
 	private RecognitionState state;
 	private Button toggleRecognitionBtn;
-	private TextView recognitionResultsText;
+	private FlowLayout recognitionResults;
 	private boolean resetOnStop;
 	private int originalVolume;
+	private ArrayList<RecognizedWord> recognizedWords;
+	private RecognizedWord selectedWord;
+
+	public void showKeyboardFor( RecognizedWord word ) {
+		if (selectedWord == null) {
+			InputMethodManager keyboard = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
+			keyboard.toggleSoftInput(InputMethodManager.SHOW_IMPLICIT,InputMethodManager.HIDE_IMPLICIT_ONLY);
+		} else {
+			selectedWord.unSelect();
+		}
+		selectedWord = word;
+	}
+
+	public void hideKeyboard() {
+		InputMethodManager keyboard = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
+		keyboard.toggleSoftInput(InputMethodManager.SHOW_IMPLICIT,InputMethodManager.HIDE_IMPLICIT_ONLY);
+		selectedWord = null;
+	}
+
+	public void removeWord( RecognizedWord word ) {
+		Log.v(TAG, "removeWord: " + word.text());
+		recognizedWords.remove(word);
+	}
+
+	@Override
+	public boolean onKeyDown(int keyCode, KeyEvent event) {
+		boolean handled = false;
+
+		if (selectedWord != null) {
+			handled = selectedWord.onKeyDown(keyCode, event);
+		}
+		return handled || super.onKeyDown(keyCode, event);
+	}
+
+	private void onRecognitionResults(String[] words ) {
+		for (int i=0; i<words.length; i++) {
+			if (words[i].length() > 0) {
+				if (i < recognizedWords.size()) {
+					recognizedWords.get(i).update(words[i]);
+				} else {
+					recognizedWords.add(new RecognizedWord(words[i], recognitionResults, this));
+				}
+			}
+		}
+	}
 
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -42,7 +90,12 @@ public class RecognitionActivity extends AppCompatActivity implements Recognitio
 		setContentView(R.layout.activity_recognition);
 
 		toggleRecognitionBtn = (Button) this.findViewById(R.id.ToggleRecognitionBtn);
-		recognitionResultsText = (TextView) this.findViewById(R.id.RecognitionResults);
+		recognitionResults = (FlowLayout) this.findViewById(R.id.RecognitionResults);
+		recognizedWords = new ArrayList<>();
+		selectedWord = null;
+
+		onRecognitionResults("Hello World this is an automatically generated closed caption text".split(" "));
+
 		speech_recognizer = SpeechRecognizer.createSpeechRecognizer(this.getApplicationContext());
 		resetOnStop = false;
 		state = RecognitionState.IDLE;
@@ -164,7 +217,7 @@ public class RecognitionActivity extends AppCompatActivity implements Recognitio
 				}
 				i++;
 			}
-			recognitionResultsText.append(results.get(0) + ".\n");
+			onRecognitionResults(results.get(0).split(" "));
 		} else {
 			Log.w(TAG, "onResults: no results");
 		}
@@ -177,9 +230,8 @@ public class RecognitionActivity extends AppCompatActivity implements Recognitio
 		Log.v(TAG, "onPartialResults: results=" + results.size());
 		for (String result : results) {
 			Log.v(TAG, "\tresult: " + result);
-			// TODO: Mostrar en la ui como resultado parcial, permitiendo al usuario editar/confirmar el texto.
-			// recognitionResultsText.append(result + " ");
 		}
+		onRecognitionResults(results.get(0).split(" "));
 	}
 
 	@Override
@@ -211,9 +263,12 @@ public class RecognitionActivity extends AppCompatActivity implements Recognitio
 		intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
 		intent.putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 5);
 		intent.putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true);
+		/* TODO: modificar estos parametros y ver como interfiere en la velocidad del reconocimiento
 		intent.putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, 1000);
 		intent.putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS, 500);
-		/*intent.putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_MINIMUM_LENGTH_MILLIS, 5000);*/
+		intent.putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_MINIMUM_LENGTH_MILLIS, 5000);
+		*/
+
 		speech_recognizer.startListening(intent);
 		state = RecognitionState.STARTING;
 		resetOnStop = true;
