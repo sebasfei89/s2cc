@@ -1,33 +1,59 @@
 package tesis.s2cc;
 
+import android.content.Context;
 import android.graphics.Color;
+import android.os.Handler;
+import android.text.InputType;
 import android.util.Log;
 import android.util.TypedValue;
-import android.view.KeyEvent;
+import android.view.ActionMode;
+import android.view.Menu;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.inputmethod.EditorInfo;
+import android.view.inputmethod.InputMethodManager;
+import android.widget.EditText;
 import android.widget.TextView;
 
 import com.wefika.flowlayout.FlowLayout;
 
-public class RecognizedWord implements View.OnClickListener, View.OnLongClickListener {
+public class RecognizedWord implements View.OnClickListener, View.OnLongClickListener, View.OnFocusChangeListener {
 
 	private static final String TAG = "RecognizedWord";
 
 	private RecognitionActivity mActivity;
-	private TextView mView;
+	private EditText mView;
 	private TextView mSepView;
-	private String mPartialInput;
 	private ViewGroup mContainer;
 	private ClosedCaptionGenerator mCCGenerator;
 
 	RecognizedWord(String word, RecognitionActivity activity, ClosedCaptionGenerator ccGenerator) {
 		mActivity = activity;
-		mPartialInput = "";
 		mContainer = (FlowLayout) mActivity.findViewById(R.id.RecognitionResults);
 		mCCGenerator = ccGenerator;
 
-		mView = new TextView(mActivity);
+		mView = new EditText(mActivity);
+		mView.setCustomSelectionActionModeCallback(new ActionMode.Callback() {
+			public boolean onPrepareActionMode(ActionMode mode, Menu menu) {
+				return false;
+			}
+			public void onDestroyActionMode(ActionMode mode) {
+			}
+			public boolean onCreateActionMode(ActionMode mode, Menu menu) {
+				return false;
+			}
+			public boolean onActionItemClicked(ActionMode mode, MenuItem item) {
+				return false;
+			}
+		});
+		mView.setInputType(InputType.TYPE_CLASS_TEXT);
+		mView.setFocusable(true);
+		mView.setFocusableInTouchMode(true);
+		mView.setImeOptions(EditorInfo.IME_ACTION_DONE);
+		mView.setCursorVisible(false);
+		mView.setTextIsSelectable(true);
+		mView.setBackgroundColor(Color.TRANSPARENT);
 		mView.setText(word);
 		int spacing = mActivity.getResources().getDimensionPixelSize(R.dimen.word_spacing);
 		mView.setPadding(spacing, 0, spacing, 0);
@@ -35,6 +61,7 @@ public class RecognizedWord implements View.OnClickListener, View.OnLongClickLis
 		mView.setLongClickable(true);
 		mView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 24);
 		mView.setLayoutParams(new FlowLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+		mView.setOnFocusChangeListener(this);
 		mView.setOnClickListener(this);
 		mView.setOnLongClickListener(this);
 		mContainer.addView(mView);
@@ -52,53 +79,25 @@ public class RecognizedWord implements View.OnClickListener, View.OnLongClickLis
 		return mView.getText().toString();
 	}
 
+	public View getView() {
+		return mView;
+	}
+
 	public void update(String word) {
 		Log.v(TAG, "update: word=" + mView.getText() + ", updated_word=" + word);
 		mView.setText(word);
 	}
 
-	public boolean onKeyDown(int keyCode, KeyEvent event) {
-		Log.v(TAG, "onKeyUp: keyCode=" + keyCode + ", event=" + event.toString());
-
-		if (keyCode == KeyEvent.KEYCODE_ENTER) {
-			mActivity.hideKeyboard();
-			onInputComplete();
-			return true;
-		}
-		else if (keyCode == KeyEvent.KEYCODE_BACK) {
-			// TODO: este evento no llega cuando esta abierto el teclado virtual
-			mPartialInput = "";
-			unSelect();
-			return true;
-		}
-		else {
-			char printableChar = (char) event.getUnicodeChar();
-			if (printableChar>0x0F) {
-				mPartialInput += printableChar;
-				return true;
+	public void showKeyboard() {
+		final Handler handler = new Handler();
+		handler.postDelayed(new Runnable() {
+			@Override
+			public void run() {
+				mView.selectAll();
+				InputMethodManager keyboard = (InputMethodManager) mActivity.getSystemService(Context.INPUT_METHOD_SERVICE);
+				keyboard.showSoftInput(mView, InputMethodManager.SHOW_IMPLICIT);
 			}
-		}
-
-		return false;
-	}
-
-	public void unSelect() {
-		mView.setBackgroundColor(Color.TRANSPARENT);
-	}
-
-	private void onInputComplete() {
-		if (mPartialInput.length() > 0) {
-			mView.setText(mPartialInput);
-			mPartialInput = "";
-		}
-		unSelect();
-	}
-
-	@Override
-	public void onClick(View view) {
-		Log.v(TAG, "onClick: word=" + mView.getText());
-		mActivity.showKeyboardFor(this);
-		mView.setBackgroundColor(Color.rgb(173, 216, 230));
+		}, 60);
 	}
 
 	@Override
@@ -107,5 +106,29 @@ public class RecognizedWord implements View.OnClickListener, View.OnLongClickLis
 		mContainer.removeView(mSepView);
 		mCCGenerator.removeWord(this);
 		return true;
+	}
+
+	@Override
+	public void onFocusChange(View view, boolean focused) {
+		Log.v(TAG, "onFocusChange: word=" + text() + ", focused=" + focused);
+		if (focused) {
+			showKeyboard();
+		}
+	}
+
+	@Override
+	public void onClick(View view) {
+		Log.v(TAG, "onClick: word=" + text());
+		if (mView.isFocused()) {
+			InputMethodManager keyboard = (InputMethodManager) mActivity.getSystemService(Context.INPUT_METHOD_SERVICE);
+			keyboard.hideSoftInputFromWindow(mView.getWindowToken(), InputMethodManager.HIDE_IMPLICIT_ONLY);
+			final Handler handler = new Handler();
+			handler.postDelayed(new Runnable() {
+				@Override
+				public void run() {
+					mActivity.findViewById(R.id.ToggleRecognitionBtn).requestFocus();
+				}
+			}, 500);
+		}
 	}
 }

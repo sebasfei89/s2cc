@@ -6,6 +6,7 @@ import android.speech.RecognitionListener;
 import android.speech.RecognizerIntent;
 import android.speech.SpeechRecognizer;
 import android.util.Log;
+import android.view.View;
 
 import java.util.ArrayList;
 
@@ -25,6 +26,18 @@ public class ClosedCaptionGenerator implements RecognitionListener {
 		mRecognizedWords = new ArrayList<>();
 
 		updateRecognizedWords("Hello World this is an automatically generated closed caption text".split(" "));
+	}
+
+	public void reset() {
+		View focused = mActivity.getCurrentFocus();
+		if (focused != null) {
+			for (RecognizedWord w : mRecognizedWords) {
+				if (w.getView() == focused) {
+					w.showKeyboard();
+				}
+			}
+		}
+		resetRecognizer();
 	}
 
 	public void destroy() {
@@ -55,13 +68,6 @@ public class ClosedCaptionGenerator implements RecognitionListener {
 		updateState(RecognitionState.STOPPING);
 	}
 
-	public void resetRecognizer() {
-		Log.v(TAG, "resetRecognizer: state=" + mState.name);
-		mSpeechRecognizer.destroy();
-		mSpeechRecognizer.setRecognitionListener(this);
-		updateState(RecognitionState.IDLE);
-	}
-
 	public void toggleRecognition() {
 		Log.v(TAG, "onToggleRecognition: state=" + mState.name);
 		switch (mState) {
@@ -80,6 +86,13 @@ public class ClosedCaptionGenerator implements RecognitionListener {
 	public void removeWord(RecognizedWord word) {
 		Log.v(TAG, "removeWord: " + word.text());
 		mRecognizedWords.remove(word);
+	}
+
+	private void resetRecognizer() {
+		Log.v(TAG, "resetRecognizer: state=" + mState.name);
+		mSpeechRecognizer.destroy();
+		mSpeechRecognizer.setRecognitionListener(this);
+		updateState(RecognitionState.IDLE);
 	}
 
 	private void updateRecognizedWords(String[] words) {

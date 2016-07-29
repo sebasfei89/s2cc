@@ -2,13 +2,10 @@ package tesis.s2cc;
 
 import android.content.Context;
 import android.media.AudioManager;
-import android.os.Handler;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
-import android.view.KeyEvent;
 import android.view.View;
-import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
 
 public class RecognitionActivity extends AppCompatActivity {
@@ -18,7 +15,6 @@ public class RecognitionActivity extends AppCompatActivity {
 	private Button toggleRecognitionBtn;
 	private boolean resetOnStop;
 	private int originalVolume;
-	private RecognizedWord selectedWord;
 	private ClosedCaptionGenerator mCCGenerator;
 
 	@Override
@@ -28,9 +24,10 @@ public class RecognitionActivity extends AppCompatActivity {
 		setContentView(R.layout.activity_recognition);
 
 		mCCGenerator = new ClosedCaptionGenerator(this);
-		selectedWord = null;
 		resetOnStop = false;
 		toggleRecognitionBtn = (Button) this.findViewById(R.id.ToggleRecognitionBtn);
+		toggleRecognitionBtn.setFocusableInTouchMode(true);
+		toggleRecognitionBtn.setFocusable(true);
 	}
 
 	@Override
@@ -41,14 +38,7 @@ public class RecognitionActivity extends AppCompatActivity {
 		originalVolume = mAudioManager.getStreamVolume(AudioManager.STREAM_MUSIC);
 		mAudioManager.setStreamVolume(AudioManager.STREAM_MUSIC, 0, 0);
 		resetOnStop = false;
-		mCCGenerator.resetRecognizer();
-
-		// If keyboard was opened when app was paussed/stopped open it again
-		if (selectedWord != null) {
-			RecognizedWord tmp = selectedWord;
-			selectedWord = null;
-			showKeyboardFor(tmp);
-		}
+		mCCGenerator.reset();
 	}
 
 	@Override
@@ -70,16 +60,6 @@ public class RecognitionActivity extends AppCompatActivity {
 		Log.i(TAG, "onDestroy");
 		super.onDestroy();
 		mCCGenerator.destroy();
-	}
-
-	@Override
-	public boolean onKeyDown(int keyCode, KeyEvent event) {
-		boolean handled = false;
-
-		if (selectedWord != null) {
-			handled = selectedWord.onKeyDown(keyCode, event);
-		}
-		return handled || super.onKeyDown(keyCode, event);
 	}
 
 	public void onToggleRecognition(View view) {
@@ -111,28 +91,5 @@ public class RecognitionActivity extends AppCompatActivity {
 				toggleRecognitionBtn.setEnabled(false);
 				break;
 		}
-	}
-
-	public void showKeyboardFor(RecognizedWord word) {
-		Log.v(TAG, "showKeyboardFor: word=" + word.text());
-		if (selectedWord != null) {
-			selectedWord.unSelect();
-		}
-		selectedWord = word;
-		final Handler handler = new Handler();
-		handler.postDelayed(new Runnable() {
-			@Override
-			public void run() {
-				InputMethodManager keyboard = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
-				keyboard.showSoftInput(findViewById(R.id.MainView).getRootView(), InputMethodManager.SHOW_IMPLICIT);
-			}
-		}, 100);
-	}
-
-	public void hideKeyboard() {
-		Log.v(TAG, "hideKeyboard");
-		InputMethodManager keyboard = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
-		keyboard.toggleSoftInput(InputMethodManager.SHOW_IMPLICIT, InputMethodManager.HIDE_IMPLICIT_ONLY);
-		selectedWord = null;
 	}
 }
