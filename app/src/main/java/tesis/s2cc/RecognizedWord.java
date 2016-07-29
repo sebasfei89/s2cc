@@ -14,19 +14,23 @@ public class RecognizedWord implements View.OnClickListener, View.OnLongClickLis
 
 	private static final String TAG = "RecognizedWord";
 
-	private RecognitionActivity mContext;
+	private RecognitionActivity mActivity;
 	private TextView mView;
 	private TextView mSepView;
 	private String mPartialInput;
 	private ViewGroup mContainer;
+	private ClosedCaptionGenerator mCCGenerator;
 
-	RecognizedWord(String word, ViewGroup container, RecognitionActivity context) {
-		mContext = context;
+	RecognizedWord(String word, RecognitionActivity activity, ClosedCaptionGenerator ccGenerator) {
+		mActivity = activity;
 		mPartialInput = "";
-		mContainer = container;
+		mContainer = (FlowLayout) mActivity.findViewById(R.id.RecognitionResults);
+		mCCGenerator = ccGenerator;
 
-		mView = new TextView(mContext);
+		mView = new TextView(mActivity);
 		mView.setText(word);
+		int spacing = mActivity.getResources().getDimensionPixelSize(R.dimen.word_spacing);
+		mView.setPadding(spacing, 0, spacing, 0);
 		mView.setTextColor(Color.BLACK);
 		mView.setLongClickable(true);
 		mView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 24);
@@ -35,10 +39,10 @@ public class RecognizedWord implements View.OnClickListener, View.OnLongClickLis
 		mView.setOnLongClickListener(this);
 		mContainer.addView(mView);
 
-		mSepView = new TextView(mContext);
+		mSepView = new TextView(mActivity);
 		mSepView.setText(R.string.ellipsis);
 		mSepView.setTextColor(Color.BLACK);
-		mSepView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 24);
+		mSepView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 20);
 		mSepView.setBackgroundResource(R.drawable.border_background);
 		mSepView.setLayoutParams(new FlowLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
 		mContainer.addView(mSepView);
@@ -57,7 +61,7 @@ public class RecognizedWord implements View.OnClickListener, View.OnLongClickLis
 		Log.v(TAG, "onKeyUp: keyCode=" + keyCode + ", event=" + event.toString());
 
 		if (keyCode == KeyEvent.KEYCODE_ENTER) {
-			mContext.hideKeyboard();
+			mActivity.hideKeyboard();
 			onInputComplete();
 			return true;
 		}
@@ -67,15 +71,12 @@ public class RecognizedWord implements View.OnClickListener, View.OnLongClickLis
 			unSelect();
 			return true;
 		}
-		else if (keyCode >= KeyEvent.KEYCODE_A && keyCode <= KeyEvent.KEYCODE_Z) {
-			Log.v(TAG, "onKeyUp: character: " + (char) keyCode);
-			mPartialInput += (char) event.getUnicodeChar();
-			return true;
-		}
-		else if (keyCode >= KeyEvent.KEYCODE_0 && keyCode <= KeyEvent.KEYCODE_9) {
-			Log.v(TAG, "onKeyUp: number: " + (char) keyCode);
-			mPartialInput += (char) event.getUnicodeChar();
-			return true;
+		else {
+			char printableChar = (char) event.getUnicodeChar();
+			if (printableChar>0x0F) {
+				mPartialInput += printableChar;
+				return true;
+			}
 		}
 
 		return false;
@@ -96,14 +97,15 @@ public class RecognizedWord implements View.OnClickListener, View.OnLongClickLis
 	@Override
 	public void onClick(View view) {
 		Log.v(TAG, "onClick: word=" + mView.getText());
-		mContext.showKeyboardFor(this);
+		mActivity.showKeyboardFor(this);
 		mView.setBackgroundColor(Color.rgb(173, 216, 230));
 	}
 
 	@Override
 	public boolean onLongClick(View view) {
 		mContainer.removeView(mView);
-		mContext.removeWord(this);
+		mContainer.removeView(mSepView);
+		mCCGenerator.removeWord(this);
 		return true;
 	}
 }

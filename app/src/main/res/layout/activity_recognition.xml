@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" xmlns:tools="http://schemas.android.com/tools"
     tools:context="tesis.s2cc.RecognitionActivity"
+    android:id="@+id/MainView"
     android:keepScreenOn="true"
     android:orientation="vertical"
     android:layout_width="match_parent"
