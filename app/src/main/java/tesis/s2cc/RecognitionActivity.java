@@ -15,7 +15,7 @@ public class RecognitionActivity extends AppCompatActivity {
 	private Button toggleRecognitionBtn;
 	private boolean resetOnStop;
 	private int originalVolume;
-	private ClosedCaptionGenerator mCCGenerator;
+	private OldClosedCaptionGenerator mCCGenerator;
 
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -23,7 +23,7 @@ public class RecognitionActivity extends AppCompatActivity {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_recognition);
 
-		mCCGenerator = new ClosedCaptionGenerator(this);
+		mCCGenerator = new OldClosedCaptionGenerator(this);
 		resetOnStop = false;
 		toggleRecognitionBtn = (Button) this.findViewById(R.id.ToggleRecognitionBtn);
 		toggleRecognitionBtn.setFocusableInTouchMode(true);
