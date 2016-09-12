@@ -1,66 +1,69 @@
 package tesis.s2cc;
 
-public class CCTokenView /*implements View.OnClickListener, View.OnLongClickListener, View.OnFocusChangeListener*/ {
+import android.content.Context;
+import android.graphics.Color;
+import android.os.Handler;
+import android.text.InputType;
+import android.util.Log;
+import android.util.TypedValue;
+import android.view.ActionMode;
+import android.view.Menu;
+import android.view.MenuItem;
+import android.view.View;
+import android.view.ViewGroup;
+import android.view.inputmethod.EditorInfo;
+import android.view.inputmethod.InputMethodManager;
+import android.widget.EditText;
 
+import com.google.android.flexbox.FlexboxLayout;
+
+public class CCTokenView implements View.OnClickListener, View.OnFocusChangeListener {
+
+	private static final String TAG = "CCTokenView";
+
+	private String mEllipsis;
 	private CCToken mToken;
+	private EditText mView;
+	private EditText mSepView;
+	private RecognitionActivity mActivity;
 
-	public CCTokenView( CCToken token, RecognitionActivity activity, OldClosedCaptionGenerator ccGenerator ) {
+	public CCTokenView( RecognitionActivity activity, CCToken token ) {
 		mToken = token;
+		mActivity = activity;
+		mEllipsis = mActivity.getResources().getString(R.string.ellipsis);
+		mView = initView(mToken.getOriginalWord());
+		mView.setInputType( InputType.TYPE_CLASS_TEXT );
+		mView.setImeOptions( EditorInfo.IME_ACTION_DONE );
+		int spacing = mActivity.getResources().getDimensionPixelSize( R.dimen.word_spacing );
+		mView.setPadding( spacing, 0, spacing, 0 );
+		mView.setBackgroundColor( Color.TRANSPARENT );
 
-//		mActivity = activity;
-//		mContainer = (FlowLayout) mActivity.findViewById(R.id.RecognitionResults);
-//		mCCGenerator = ccGenerator;
-//
-//		mView = new EditText(mActivity);
-//		mView.setCustomSelectionActionModeCallback(new ActionMode.Callback() {
-//			public boolean onPrepareActionMode(ActionMode mode, Menu menu) {
-//				return false;
-//			}
-//			public void onDestroyActionMode(ActionMode mode) {
-//			}
-//			public boolean onCreateActionMode(ActionMode mode, Menu menu) {
-//				return false;
-//			}
-//			public boolean onActionItemClicked(ActionMode mode, MenuItem item) {
-//				return false;
-//			}
-//		});
-//		mView.setInputType(InputType.TYPE_CLASS_TEXT);
-//		mView.setFocusable(true);
-//		mView.setFocusableInTouchMode(true);
-//		mView.setImeOptions(EditorInfo.IME_ACTION_DONE);
-//		mView.setCursorVisible(false);
-//		mView.setTextIsSelectable(true);
-//		mView.setBackgroundColor(Color.TRANSPARENT);
-//		mView.setText(mOriginalWord);
-//		int spacing = mActivity.getResources().getDimensionPixelSize(R.dimen.word_spacing);
-//		mView.setPadding(spacing, 0, spacing, 0);
-//		mView.setTextColor(Color.BLACK);
-//		mView.setLongClickable(true);
-//		mView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 24);
-//		mView.setLayoutParams(new FlowLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
-//		mView.setOnFocusChangeListener(this);
-//		mView.setOnClickListener(this);
-//		mView.setOnLongClickListener(this);
-//		mContainer.addView(mView);
-//
-//		mSepView = new TextView(mActivity);
-//		mSepView.setText(R.string.ellipsis);
-//		mSepView.setTextColor(Color.BLACK);
-//		mSepView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 20);
-//		mSepView.setBackgroundResource(R.drawable.border_background);
-//		mSepView.setLayoutParams(new FlowLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
-//		mContainer.addView(mSepView);
+		mSepView = initView( mEllipsis );
+		mSepView.setBackgroundResource( R.drawable.border_background );
 	}
 
-//	public String text() {
-//		return mView.getText().toString();
-//	}
-//
-//	public View getView() {
-//		return mView;
-//	}
-//
+	public String getWord() {
+		mToken.onWordEdited( mView.getText().toString() );
+		String separator = mSepView.getText().toString();
+		return mToken.getAcceptedWord() + (separator.equals(mEllipsis) ? " " : separator );
+	}
+
+	public void setSeparatorText( CharSequence text ) {
+		mSepView.setText(text);
+	}
+
+	public void show( ViewGroup container ) {
+		Log.v(TAG, "show: word=" + mToken.getOriginalWord() + ", mView.text=" + mView.getText());
+		container.addView(mView);
+		container.addView(mSepView);
+	}
+
+	public void show( int index, ViewGroup container ) {
+		Log.v(TAG, "show: word=" + mToken.getOriginalWord() + ", mView.text=" + mView.getText());
+		container.addView(mView, index*2);
+		container.addView(mSepView, index*2+1);
+	}
+
 //	public void updateWord( String word ) {
 //		Log.v(TAG, "update: mOriginalWord=" + mOriginalWord + ", mView.text=" + mView.getText() + ", word=" + word);
 //		if (mOriginalWord.equals(mView.getText().toString())) {
@@ -68,48 +71,99 @@ public class CCTokenView /*implements View.OnClickListener, View.OnLongClickList
 //			mView.setText(mOriginalWord);
 //		}
 //	}
-//
-//	public void showKeyboard() {
-//		final Handler handler = new Handler();
-//		handler.postDelayed(new Runnable() {
-//			@Override
-//			public void run() {
-//				mView.selectAll();
-//				InputMethodManager keyboard = (InputMethodManager) mActivity.getSystemService(Context.INPUT_METHOD_SERVICE);
-//				keyboard.showSoftInput(mView, InputMethodManager.SHOW_IMPLICIT);
-//			}
-//		}, 60);
-//	}
-//
-//	@Override
-//	public boolean onLongClick(View view) {
-//		mContainer.removeView(mView);
-//		mContainer.removeView(mSepView);
-//		mCCGenerator.removeWord(this);
-//		return true;
-//	}
-//
-//	@Override
-//	public void onFocusChange(View view, boolean focused) {
-//		Log.v(TAG, "onFocusChange: word=" + text() + ", focused=" + focused);
-//		if (focused) {
-//			showKeyboard();
-//		}
-//	}
-//
-//	@Override
-//	public void onClick(View view) {
-//		Log.v(TAG, "onClick: word=" + text());
-//		if (mView.isFocused()) {
-//			InputMethodManager keyboard = (InputMethodManager) mActivity.getSystemService(Context.INPUT_METHOD_SERVICE);
-//			keyboard.hideSoftInputFromWindow(mView.getWindowToken(), InputMethodManager.HIDE_IMPLICIT_ONLY);
-//			final Handler handler = new Handler();
-//			handler.postDelayed(new Runnable() {
-//				@Override
-//				public void run() {
-//					mActivity.findViewById(R.id.ToggleRecognitionBtn).requestFocus();
-//				}
-//			}, 500);
-//		}
-//	}
+
+	public void onDeleted( ViewGroup container ) {
+		Log.v(TAG, "onDeleted: word=" + mToken.getOriginalWord());
+		if (mView.isFocused()) {
+			unSelect();
+			hideKeyboard();
+		}
+		container.removeView(mView);
+		container.removeView(mSepView);
+	}
+
+	public void focus() {
+		Log.v(TAG, "select: word=" + mToken.getOriginalWord());
+		mView.requestFocus();
+	}
+
+	@Override
+	public void onFocusChange(View view, boolean focused) {
+		Log.v(TAG, "onFocusChange: word=" + mToken.getOriginalWord() + ", focused=" + focused);
+		if (focused) {
+			onViewFocused((EditText) view);
+			mActivity.showActionButtons(this, view == mView, view == mSepView);
+		}
+	}
+
+	@Override
+	public void onClick(View view) {
+		Log.v(TAG, "onClick: word=" + mToken.getOriginalWord());
+		if (view.isFocused()) {
+			unSelect();
+			if (view == mView) {
+				hideKeyboard();
+			}
+		} else {
+			if (view == mSepView) {
+				hideKeyboard();
+			}
+			view.requestFocus();
+		}
+	}
+
+	private EditText initView( String text ) {
+		EditText view = new EditText(mActivity);
+		view.setText(text);
+		view.setFocusable(true);
+		view.setFocusableInTouchMode(true);
+		view.setCursorVisible(false);
+		view.setTextIsSelectable(true);
+		view.setTextColor(Color.BLACK);
+		view.setTextSize(TypedValue.COMPLEX_UNIT_SP, 24);
+		view.setLayoutParams(new FlexboxLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+		view.setOnClickListener(this);
+		view.setOnFocusChangeListener(this);
+
+		// Prevent double click default action:
+		view.setCustomSelectionActionModeCallback(new ActionMode.Callback() {
+			public boolean onPrepareActionMode(ActionMode mode, Menu menu) {return false;}
+			public void onDestroyActionMode(ActionMode mode) {}
+			public boolean onCreateActionMode(ActionMode mode, Menu menu) {return false;}
+			public boolean onActionItemClicked(ActionMode mode, MenuItem item) {return false;}
+		});
+
+		return view;
+	}
+
+	private void unSelect() {
+		Log.v(TAG, "unSelect: word=" + mToken.getOriginalWord());
+		mActivity.hideActionButtons();
+		mActivity.findViewById(R.id.start_stop).requestFocus();
+	}
+
+	private void onViewFocused( final EditText view ) {
+		final Handler handler = new Handler();
+		handler.postDelayed(new Runnable() {
+			@Override
+			public void run() {
+				view.selectAll();
+				if (view == mView) {
+					showKeyboard();
+				} else {
+					hideKeyboard();
+				}
+			}
+		}, 60);
+	}
+
+	private void showKeyboard() {
+		InputMethodManager keyboard = (InputMethodManager) mActivity.getSystemService(Context.INPUT_METHOD_SERVICE);
+		keyboard.showSoftInput(mView, InputMethodManager.SHOW_IMPLICIT);
+	}
+
+	private void hideKeyboard() {
+		InputMethodManager keyboard = (InputMethodManager) mActivity.getSystemService(Context.INPUT_METHOD_SERVICE);
+		keyboard.hideSoftInputFromWindow(mView.getWindowToken(), InputMethodManager.HIDE_IMPLICIT_ONLY);
+	}
 }

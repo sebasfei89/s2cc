@@ -1,28 +1,155 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" xmlns:tools="http://schemas.android.com/tools"
-    tools:context="tesis.s2cc.RecognitionActivity"
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:id="@+id/MainView"
-    android:keepScreenOn="true"
-    android:orientation="vertical"
+    android:orientation="horizontal"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:fitsSystemWindows="true"
-    android:paddingBottom="@dimen/activity_vertical_margin"
-    android:paddingLeft="@dimen/activity_horizontal_margin"
-    android:paddingRight="@dimen/activity_horizontal_margin"
-    android:paddingTop="@dimen/activity_vertical_margin">
 
-    <com.wefika.flowlayout.FlowLayout
-        android:id="@+id/RecognitionResults"
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
+    android:keepScreenOn="true"
+    android:fitsSystemWindows="true">
+
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
         android:layout_weight="1"
-        android:gravity="start|top">
-    </com.wefika.flowlayout.FlowLayout>
+        android:orientation="vertical">
 
-    <Button android:id="@+id/ToggleRecognitionBtn"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="@string/start"
-        android:onClick="onToggleRecognition"/>
+        <com.google.android.flexbox.FlexboxLayout
+            android:id="@+id/RecognitionResults"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            app:flexWrap="wrap"
+            app:alignItems="flex_start"
+            app:alignContent="flex_start" />
+
+        <com.google.android.flexbox.FlexboxLayout
+            android:id="@+id/sep_buttons"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:visibility="gone"
+            android:background="@android:color/darker_gray"
+            app:flexWrap="wrap"
+            app:justifyContent="center">
+            <Button
+                android:id="@+id/sep_question_mark_open"
+                android:layout_width="@dimen/button_width"
+                android:layout_height="wrap_content"
+                android:text="¿"
+                android:onClick="setSeparatorText"/>
+            <Button
+                android:id="@+id/sep_question_mark_close"
+                android:layout_width="@dimen/button_width"
+                android:layout_height="wrap_content"
+                android:text="\?"
+                android:onClick="setSeparatorText"/>
+            <Button
+                android:id="@+id/sep_exclamation_mark_open"
+                android:layout_width="@dimen/button_width"
+                android:layout_height="wrap_content"
+                android:text="¡"
+                android:onClick="setSeparatorText"/>
+            <Button
+                android:id="@+id/sep_exclamation_mark_close"
+                android:layout_width="@dimen/button_width"
+                android:layout_height="wrap_content"
+                android:text="!"
+                android:onClick="setSeparatorText"/>
+            <Button
+                android:id="@+id/sep_comma"
+                android:layout_width="@dimen/button_width"
+                android:layout_height="wrap_content"
+                android:text=","
+                android:onClick="setSeparatorText"/>
+            <Button
+                android:id="@+id/sep_period"
+                android:layout_width="@dimen/button_width"
+                android:layout_height="wrap_content"
+                android:text="."
+                android:onClick="setSeparatorText"/>
+            <Button
+                android:id="@+id/sep_semicolon"
+                android:layout_width="@dimen/button_width"
+                android:layout_height="wrap_content"
+                android:text=";"
+                android:onClick="setSeparatorText"/>
+            <Button
+                android:id="@+id/sep_hyphen"
+                android:layout_width="@dimen/button_width"
+                android:layout_height="wrap_content"
+                android:text="-"
+                android:onClick="setSeparatorText"/>
+            <Button
+                android:id="@+id/sep_apostrophe"
+                android:layout_width="@dimen/button_width"
+                android:layout_height="wrap_content"
+                android:text="´"
+                android:onClick="setSeparatorText"/>
+        </com.google.android.flexbox.FlexboxLayout>
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:padding="@dimen/activity_horizontal_margin"
+        android:background="@android:color/darker_gray">
+        <android.support.design.widget.FloatingActionButton
+            android:id="@+id/start_stop"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:clickable="true"
+            android:onClick="onToggleRecognition"
+            android:src="@android:drawable/ic_btn_speak_now"
+            android:tint="@android:color/holo_green_light"
+            android:scaleType="center"
+            android:focusable="true"
+            android:focusableInTouchMode="true"/>
+
+        <View android:layout_height="2px"
+              android:layout_width="fill_parent"
+              android:layout_marginTop="10dp"
+              android:layout_marginBottom="10dp"
+              android:background="@android:color/black"/>
+
+        <android.support.design.widget.FloatingActionButton
+            android:id="@+id/add_word"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:clickable="true"
+            android:src="@android:drawable/checkbox_on_background"
+            android:tint="@android:color/holo_green_light"
+            android:tintMode="multiply"
+            android:scaleType="center"
+            android:visibility="gone"
+            android:onClick="onWordAccepted"/>
+
+        <android.support.design.widget.FloatingActionButton
+            android:id="@+id/delete_word"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:clickable="true"
+            android:src="@android:drawable/ic_menu_delete"
+            android:tint="@android:color/holo_red_dark"
+            android:tintMode="multiply"
+            android:layout_marginTop="6dp"
+            android:scaleType="center"
+            android:visibility="gone"
+            android:onClick="onWordDeleted"/>
+
+        <android.support.design.widget.FloatingActionButton
+            android:id="@+id/new_word"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:clickable="true"
+            android:src="@android:drawable/ic_input_add"
+            android:tint="@android:color/holo_green_light"
+            android:tintMode="multiply"
+            android:layout_marginTop="6dp"
+            android:scaleType="center"
+            android:visibility="gone"
+            android:onClick="onNewWord"/>
+    </LinearLayout>
 </LinearLayout>
