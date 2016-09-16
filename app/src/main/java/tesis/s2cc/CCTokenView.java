@@ -17,7 +17,10 @@ import android.widget.EditText;
 
 import com.google.android.flexbox.FlexboxLayout;
 
-public class CCTokenView implements View.OnClickListener, View.OnFocusChangeListener {
+public class CCTokenView implements
+		RecognizedWord.Listener,
+		View.OnClickListener,
+		View.OnFocusChangeListener {
 
 	private static final String TAG = "CCTokenView";
 
@@ -42,14 +45,19 @@ public class CCTokenView implements View.OnClickListener, View.OnFocusChangeList
 		mSepView.setBackgroundResource( R.drawable.border_background );
 	}
 
-	public String getWord() {
-		mToken.onWordEdited( mView.getText().toString() );
+	public long getTimeStamp() {
+		return mToken.getTimeStamp();
+	}
+
+	public CCToken getCCToken() {
 		String separator = mSepView.getText().toString();
-		return mToken.getAcceptedWord() + (separator.equals(mEllipsis) ? " " : separator );
+		mToken.onWordEdited( mView.getText().toString() + (separator.equals(mEllipsis) ? "" : separator) );
+		return mToken;
 	}
 
 	public void setSeparatorText( CharSequence text ) {
 		mSepView.setText(text);
+		mSepView.selectAll();
 	}
 
 	public void show( ViewGroup container ) {
@@ -64,14 +72,6 @@ public class CCTokenView implements View.OnClickListener, View.OnFocusChangeList
 		container.addView(mSepView, index*2+1);
 	}
 
-//	public void updateWord( String word ) {
-//		Log.v(TAG, "update: mOriginalWord=" + mOriginalWord + ", mView.text=" + mView.getText() + ", word=" + word);
-//		if (mOriginalWord.equals(mView.getText().toString())) {
-//			mOriginalWord = word;
-//			mView.setText(mOriginalWord);
-//		}
-//	}
-
 	public void onDeleted( ViewGroup container ) {
 		Log.v(TAG, "onDeleted: word=" + mToken.getOriginalWord());
 		if (mView.isFocused()) {
@@ -85,6 +85,15 @@ public class CCTokenView implements View.OnClickListener, View.OnFocusChangeList
 	public void focus() {
 		Log.v(TAG, "select: word=" + mToken.getOriginalWord());
 		mView.requestFocus();
+	}
+
+	@Override
+	public void onWordChanged(String newWord, float confidence) {
+		Log.v(TAG, "onWordChanged: mOriginalWord=" + mToken.getOriginalWord() + ", mView.text=" + mView.getText() + ", newWord=" + newWord + ", confidence=" + confidence);
+		if (mToken.getOriginalWord().equals(mView.getText().toString())) {
+			mView.setText(newWord);
+		}
+		mToken.onRecognitionUpdate(newWord, confidence);
 	}
 
 	@Override

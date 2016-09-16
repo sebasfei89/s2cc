@@ -37,7 +37,8 @@ public class ClosedCaptionGenerator implements RecognitionListener {
 
 	public void start() {
 		Log.v(TAG, "start: state=" + mState.name);
-		assert( mState == RecognitionState.IDLE );
+		if (mState != RecognitionState.IDLE) throw new AssertionError("Expected to be in IDLE state! State was: " + mState.name);
+
 		mStopRequested = false;
 		mSpeechRecognizer.destroy();
 		mSpeechRecognizer.setRecognitionListener(this);
@@ -47,7 +48,8 @@ public class ClosedCaptionGenerator implements RecognitionListener {
 
 	public void stop() {
 		Log.v(TAG, "stop: state=" + mState.name);
-		assert( mState == RecognitionState.RECOGNIZING );
+		if (mState != RecognitionState.RECOGNIZING) throw new AssertionError("Expected to be in RECOGNIZING state! State was: " + mState.name);
+
 		mStopRequested = true;
 		updateState(RecognitionState.STOPPING);
 		mSpeechRecognizer.stopListening();
@@ -73,30 +75,6 @@ public class ClosedCaptionGenerator implements RecognitionListener {
 		return intent;
 	}
 
-//	public ArrayList<RecognizedWord> getRecognizedWords() {
-//		return mRecognizedWords;
-//	}
-//
-//	public ArrayList<CCToken> getTokens() {
-//		return mTokens;
-//	}
-//
-//	private void updateRecognizedWords( String[] words ) {
-//		for (int i = 0; i < words.length; i++) {
-//			String word = words[i];
-//			if (word.length() > 0) {
-//				if (i < mRecognizedWords.size()) {
-//					mRecognizedWords.get(i).update(word);
-//				} else {
-//					RecognizedWord rWord = new RecognizedWord(word);
-//					mRecognizedWords.add(rWord);
-//					mTokens.add(rWord.getToken());
-//					mTokens.add(new CCToken(" "));
-//				}
-//			}
-//		}
-//	}
-
 	private void updateState( RecognitionState state ) {
 		Log.v(TAG, "updateState: old_state=" + mState.name + ", new_state=" + state.name);
 		mState = state;
@@ -114,6 +92,7 @@ public class ClosedCaptionGenerator implements RecognitionListener {
 		if (mStopRequested) {
 			mListener.onRecognitionStopped();
 		} else {
+			mState = RecognitionState.IDLE;
 			start();
 		}
 	}
@@ -178,11 +157,11 @@ public class ClosedCaptionGenerator implements RecognitionListener {
 	@Override
 	public void onResults(Bundle bundle) {
 		ArrayList<String> results = bundle.getStringArrayList(android.speech.SpeechRecognizer.RESULTS_RECOGNITION);
-		assert results != null;
-		Log.v(TAG, "onResults: " + results.size());
-
 		float[] confidences = bundle.getFloatArray(android.speech.SpeechRecognizer.CONFIDENCE_SCORES);
-		assert(confidences != null);
+
+		if (results == null) throw new AssertionError("Fail to get recognition results from bundle");
+		if (confidences == null) throw new AssertionError("Fail to get confidence scores from bundle");
+
 		Log.v(TAG, "onResults: results=" + results.size() + ", confidences=" + confidences.length);
 		int i = 0;
 		for (String result : results) {
@@ -192,7 +171,9 @@ public class ClosedCaptionGenerator implements RecognitionListener {
 			}
 			i++;
 		}
-//		updateRecognizedWords(results.get(0).split(" "));
+
+		// TODO: add confidences to words recognized
+		mSessions.getLast().addConfidence(results.get(0).split(" "), confidences[0]);
 		onRecognitionStopped();
 	}
 

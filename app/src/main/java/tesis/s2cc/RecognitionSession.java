@@ -26,4 +26,15 @@ public class RecognitionSession {
 			}
 		}
 	}
+
+	public void addConfidence( String[] words, float confidence ) {
+		for (int i = 0; i < words.length; i++) {
+			String word = words[i];
+			if (word.length() > 0) {
+				if (i < mWords.size() && mWords.get(i).getWord().equals(word)) {
+					mWords.get(i).setConfidence(confidence);
+				}
+			}
+		}
+	}
 }
