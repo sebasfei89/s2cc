@@ -23,19 +23,31 @@ public class RemoteConnection {
 	public RemoteConnection( String ip, int port ) {
 		mIp = ip;
 		mPort = port;
+		mSocket = new Socket();
 	}
 
 	public void connect(){
 		new Thread(new Runnable() {
 			@Override
 			public void run() {
-				mSocket = new Socket();
 				InetSocketAddress socketAddress = new InetSocketAddress(mIp, mPort);
 				try {
 					mSocket.connect(socketAddress);
 					mSocketOutput = mSocket.getOutputStream();
 					mSocketInput = new BufferedReader(new InputStreamReader(mSocket.getInputStream()));
-					new ReceiveThread().start();
+					(new Thread() {
+						@Override
+						public void run() {
+							try {
+								String message;
+								while((message = mSocketInput.readLine()) != null) {
+									Log.i(TAG, "Received message from server: " + message);
+								}
+							} catch (IOException e) {
+								Log.i(TAG, "Receiver thread stopping due to: " + e.getMessage());
+							}
+						}
+					}).start();
 				}
 				catch (IOException e) {
 					Log.e(TAG, "Fail to connect to server on: " + mIp + ":" + mPort);
@@ -60,16 +72,7 @@ public class RemoteConnection {
 		}
 	}
 
-	private class ReceiveThread extends Thread implements Runnable{
-		public void run(){
-			try {
-				String message;
-				while((message = mSocketInput.readLine()) != null) {
-					Log.i(TAG, "Received message from server: " + message);
-				}
-			} catch (IOException e) {
-				Log.e(TAG, "Error while receiving message from server: " + e.getMessage());
-			}
-		}
+	public boolean isConnected() {
+		return mSocket.isConnected();
 	}
 }

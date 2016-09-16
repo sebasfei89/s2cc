@@ -6,7 +6,7 @@ import java.util.Observable;
 public class RecognizedWord extends Observable {
 
 	public interface Listener {
-		void onWordChanged( String newWord, float confidence );
+		void onWordChanged( String oldWord, String newWord );
 	}
 
 	private static final String TAG = "RecognizedWord";
@@ -14,10 +14,12 @@ public class RecognizedWord extends Observable {
 	private String mWord;
 	private float mConfidence;
 	private Listener mListener;
+	private long mTimeStamp;
 
-	public RecognizedWord( String word ) {
+	public RecognizedWord( String word, long timestamp ) {
 		mWord = word;
 		mConfidence = -1.0f;
+		mTimeStamp = timestamp;
 		mListener = null;
 	}
 
@@ -32,9 +34,10 @@ public class RecognizedWord extends Observable {
 	public void update( String newWord ) {
 		if (!newWord.equals(mWord)) {
 			Log.v(TAG, "update: mWord=" + mWord + ", newWord=" + newWord);
+			String oldWord = mWord;
 			mWord = newWord;
 			if (mListener != null) {
-				mListener.onWordChanged(mWord, mConfidence);
+				mListener.onWordChanged(oldWord, newWord);
 			}
 		}
 	}
@@ -44,11 +47,10 @@ public class RecognizedWord extends Observable {
 	}
 
 	public void setConfidence( float confidence ) {
-		if (mConfidence != confidence) {
-			mConfidence = confidence;
-			if (mListener != null) {
-				mListener.onWordChanged(mWord, mConfidence);
-			}
-		}
+		mConfidence = confidence;
+	}
+
+	public long getTimeStamp() {
+		return mTimeStamp;
 	}
 }

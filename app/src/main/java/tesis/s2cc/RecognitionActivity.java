@@ -3,7 +3,6 @@ package tesis.s2cc;
 import android.content.Context;
 import android.content.res.ColorStateList;
 import android.media.AudioManager;
-import android.os.SystemClock;
 import android.speech.SpeechRecognizer;
 import android.support.design.widget.FloatingActionButton;
 import android.support.v7.app.AppCompatActivity;
@@ -34,9 +33,8 @@ public class RecognitionActivity extends AppCompatActivity implements ClosedCapt
 	private int mOriginalVolume;
 	private boolean mIsRecognizing;
 	private ClosedCaptionGenerator mCCGenerator;
-	private CCTokenView mSelectedWord;
-	private ArrayList<CCTokenView> mTokenViews;
-	private long mStartTime;
+	private CCToken mSelectedWord;
+	private ArrayList<CCToken> mTokenViews;
 	private RemoteConnection mRemoteConnection;
 
 	@Override
@@ -58,7 +56,6 @@ public class RecognitionActivity extends AppCompatActivity implements ClosedCapt
 		mTokenViews = new ArrayList<>();
 		mSelectedWord = null;
 		mIsRecognizing = false;
-		mStartTime = 0;
 		mRemoteConnection = new RemoteConnection("192.168.0.15", 9876);
 	}
 
@@ -81,6 +78,9 @@ public class RecognitionActivity extends AppCompatActivity implements ClosedCapt
 		Log.i(TAG, "onStop");
 		super.onStop();
 		restoreVolume();
+		if (mRemoteConnection.isConnected()) {
+			mRemoteConnection.disconnect();
+		}
 	}
 
 	@Override
@@ -95,18 +95,16 @@ public class RecognitionActivity extends AppCompatActivity implements ClosedCapt
 		mToggleBtn.setEnabled(false);
 		hideActionButtons();
 		if (mIsRecognizing) {
-			mRemoteConnection.disconnect();
 			mToggleBtn.setImageTintList(ColorStateList.valueOf(getResources().getColor(android.R.color.holo_green_light)));
 			mCCGenerator.stop();
 		} else {
-			mStartTime = SystemClock.elapsedRealtime();
 			mRemoteConnection.connect();
 			mToggleBtn.setImageTintList(ColorStateList.valueOf(getResources().getColor(android.R.color.holo_red_dark)));
 			mCCGenerator.start();
 		}
 	}
 
-	public void showActionButtons( CCTokenView word, boolean showWordButtons, boolean showSeparatorButtons) {
+	public void showActionButtons(CCToken word, boolean showWordButtons, boolean showSeparatorButtons) {
 		mSelectedWord = word;
 		mAddWordBtn.setVisibility( (showWordButtons || showSeparatorButtons) ? View.VISIBLE : View.GONE );
 		mDeleteWordBtn.setVisibility( showWordButtons ? View.VISIBLE : View.GONE );
@@ -143,9 +141,7 @@ public class RecognitionActivity extends AppCompatActivity implements ClosedCapt
 	public void onWordRecognized( RecognizedWord rWord ) {
 		Log.v(TAG, "onWordRecognized: " + rWord.getWord());
 
-		long now = SystemClock.elapsedRealtime();
-		CCTokenView tokenView = new CCTokenView(this, new CCToken(rWord.getWord(), rWord.getConfidence(), now-mStartTime));
-		rWord.setListener( tokenView );
+		CCToken tokenView = new CCToken(this, rWord);
 		mTokenViews.add( tokenView );
 		tokenView.show(mContainer);
 	}
@@ -163,27 +159,27 @@ public class RecognitionActivity extends AppCompatActivity implements ClosedCapt
 
 	public void onWordAccepted( View view ) {
 		Log.v(TAG, "onWordAccepted");
-		assert mSelectedWord != null;
+		if (mSelectedWord == null) throw new AssertionError("No CCToken selected");
 
-		CCTokenView last = mSelectedWord;
+		CCToken last = mSelectedWord;
 		String acceptString = "";
-		ArrayList<CCTokenView> pending = new ArrayList<>();
+		ArrayList<CCToken> pending = new ArrayList<>();
 		boolean keepAccepting = true;
 		JSONArray results = new JSONArray();
-		for (CCTokenView v : mTokenViews) {
+		for (CCToken v : mTokenViews) {
 			if (keepAccepting) {
-				CCToken token = v.getCCToken();
+				String text = v.getText();
 				try {
 					JSONObject jsonToken = new JSONObject();
-					jsonToken.put("timestamp", token.getTimeStamp());
-					jsonToken.put("word", token.getAcceptedWord());
-					jsonToken.put("confidence", token.getConfidence());
+					jsonToken.put("timestamp", v.getTimeStamp());
+					jsonToken.put("text", text);
+					jsonToken.put("confidence", v.getConfidence());
 					results.put(jsonToken);
 				}
 				catch (JSONException e) {
 					Log.e(TAG, "Fail to serialize CCToken to JSON");
 				}
-				acceptString += token.getAcceptedWord();
+				acceptString += text;
 				v.onDeleted(mContainer);
 				if (v == last) {
 					keepAccepting = false;
@@ -195,6 +191,7 @@ public class RecognitionActivity extends AppCompatActivity implements ClosedCapt
 				pending.add(v);
 			}
 		}
+		mTokenViews.clear();
 		mTokenViews = pending;
 
 		Log.i(TAG, "Accepted string: " + acceptString);
@@ -206,17 +203,18 @@ public class RecognitionActivity extends AppCompatActivity implements ClosedCapt
 
 	public void onWordDeleted( View view ) {
 		Log.v(TAG, "onWordDeleted");
-		assert mSelectedWord != null;
+		if (mSelectedWord == null) throw new AssertionError("No CCToken selected");
 
 		mTokenViews.remove(mSelectedWord);
 		mSelectedWord.onDeleted(mContainer);
+		mSelectedWord = null;
 	}
 
 	public void onNewWord( View view ) {
 		Log.v(TAG, "onNewWord");
-		assert mSelectedWord != null;
+		if (mSelectedWord == null) throw new AssertionError("No CCToken selected");
 
-		CCTokenView tokenView = new CCTokenView(this, new CCToken("<--->", 1.0f, mSelectedWord.getTimeStamp()));
+		CCToken tokenView = new CCToken(this, new RecognizedWord("<--->", mSelectedWord.getTimeStamp()));
 		int index = mTokenViews.indexOf(mSelectedWord) + 1;
 		mTokenViews.add(index, tokenView);
 		tokenView.show(index, mContainer);
@@ -225,7 +223,7 @@ public class RecognitionActivity extends AppCompatActivity implements ClosedCapt
 
 	public void setSeparatorText( View view ) {
 		Log.v(TAG, "setSeparatorText");
-		assert mSelectedWord != null;
+		if (mSelectedWord == null) throw new AssertionError("No CCToken selected");
 
 		mSelectedWord.setSeparatorText(((Button) view).getText());
 	}

@@ -2,6 +2,7 @@ package tesis.s2cc;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.os.SystemClock;
 import android.speech.RecognitionListener;
 import android.speech.RecognizerIntent;
 import android.speech.SpeechRecognizer;
@@ -26,6 +27,7 @@ public class ClosedCaptionGenerator implements RecognitionListener {
 	private Listener mListener;
 	private Deque<RecognitionSession> mSessions;
 	private boolean mStopRequested;
+	private long mStartTime;
 
 	public ClosedCaptionGenerator( SpeechRecognizer recognizer, Listener listener ) {
 		mState = RecognitionState.IDLE;
@@ -33,12 +35,16 @@ public class ClosedCaptionGenerator implements RecognitionListener {
 		mStopRequested = false;
 		mListener = listener;
 		mSessions = new ArrayDeque<>();
+		mStartTime = 0;
 	}
 
 	public void start() {
 		Log.v(TAG, "start: state=" + mState.name);
 		if (mState != RecognitionState.IDLE) throw new AssertionError("Expected to be in IDLE state! State was: " + mState.name);
 
+		if (!mStopRequested) {
+			mStartTime = SystemClock.elapsedRealtime();
+		}
 		mStopRequested = false;
 		mSpeechRecognizer.destroy();
 		mSpeechRecognizer.setRecognitionListener(this);
@@ -48,11 +54,12 @@ public class ClosedCaptionGenerator implements RecognitionListener {
 
 	public void stop() {
 		Log.v(TAG, "stop: state=" + mState.name);
-		if (mState != RecognitionState.RECOGNIZING) throw new AssertionError("Expected to be in RECOGNIZING state! State was: " + mState.name);
 
 		mStopRequested = true;
-		updateState(RecognitionState.STOPPING);
-		mSpeechRecognizer.stopListening();
+		if (mState == RecognitionState.RECOGNIZING) {
+			updateState(RecognitionState.STOPPING);
+			mSpeechRecognizer.stopListening();
+		}
 	}
 
 	public void destroy() {
@@ -89,20 +96,25 @@ public class ClosedCaptionGenerator implements RecognitionListener {
 	}
 
 	private void onRecognitionStopped() {
+		mState = RecognitionState.IDLE;
 		if (mStopRequested) {
 			mListener.onRecognitionStopped();
 		} else {
-			mState = RecognitionState.IDLE;
 			start();
 		}
 	}
 
 	@Override
 	public void onReadyForSpeech(Bundle bundle) {
-		assert mListener != null;
 		Log.v(TAG, "onReadyForSpeech: state=" + mState.name);
-		mSessions.add(new RecognitionSession(mListener));
-		updateState(RecognitionState.RECOGNIZING);
+		if (mListener == null) throw new AssertionError("Listener is not set");
+
+		if (mStopRequested) {
+			stop();
+		} else {
+			mSessions.add(new RecognitionSession(mStartTime, mListener));
+			updateState(RecognitionState.RECOGNIZING);
+		}
 	}
 
 	@Override
@@ -172,7 +184,6 @@ public class ClosedCaptionGenerator implements RecognitionListener {
 			i++;
 		}
 
-		// TODO: add confidences to words recognized
 		mSessions.getLast().addConfidence(results.get(0).split(" "), confidences[0]);
 		onRecognitionStopped();
 	}
@@ -191,4 +202,14 @@ public class ClosedCaptionGenerator implements RecognitionListener {
 
 	@Override
 	public void onEvent(int i, Bundle bundle) {}
+
+	enum RecognitionState {
+		IDLE("IDLE"), STARTING("STARTING"), RECOGNIZING("RECOGNIZING"), STOPPING("STOPPING");
+
+		public final String name;
+
+		RecognitionState(String name) {
+			this.name = name;
+		}
+	}
 }
