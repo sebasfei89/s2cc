@@ -1,6 +1,8 @@
 package tesis.s2cc;
 
+import android.content.Context;
 import android.content.Intent;
+import android.media.AudioManager;
 import android.os.Bundle;
 import android.os.SystemClock;
 import android.speech.RecognitionListener;
@@ -17,6 +19,7 @@ public class ClosedCaptionGenerator implements RecognitionListener {
 	private static final String TAG = "ClosedCaptionGenerator";
 
 	public interface Listener {
+		void onBeforeStart();
 		void onRecognitionStarted();
 		void onRecognitionStopped();
 		void onWordRecognized( RecognizedWord rWord );
@@ -49,6 +52,7 @@ public class ClosedCaptionGenerator implements RecognitionListener {
 		mSpeechRecognizer.destroy();
 		mSpeechRecognizer.setRecognitionListener(this);
 		updateState(RecognitionState.STARTING);
+		mListener.onBeforeStart();
 		mSpeechRecognizer.startListening( getRecognitionIntent() );
 	}
 
@@ -72,11 +76,11 @@ public class ClosedCaptionGenerator implements RecognitionListener {
 		Intent intent = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
 		intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE, "es-AR");
 		intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
-		intent.putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 5);
+		intent.putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 2);
 		intent.putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true);
+		intent.putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, 3000);
+		intent.putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS, 1500);
 		/* TODO: modificar estos parametros y ver como interfiere en la velocidad del reconocimiento
-			intent.putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, 1000);
-			intent.putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS, 500);
 			intent.putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_MINIMUM_LENGTH_MILLIS, 5000);
 		*/
 		return intent;

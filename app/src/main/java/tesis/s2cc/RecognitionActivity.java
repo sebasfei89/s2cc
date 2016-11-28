@@ -1,8 +1,10 @@
 package tesis.s2cc;
 
 import android.content.Context;
+import android.content.Intent;
 import android.content.res.ColorStateList;
 import android.media.AudioManager;
+import android.media.MediaPlayer;
 import android.speech.SpeechRecognizer;
 import android.support.design.widget.FloatingActionButton;
 import android.support.v7.app.AppCompatActivity;
@@ -18,9 +20,14 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.io.IOException;
 import java.util.ArrayList;
 
 public class RecognitionActivity extends AppCompatActivity implements ClosedCaptionGenerator.Listener {
+
+	public final static String MODE = "tesis.s2cc.RecognitionActivity.MODE";
+	public final static int DEMO_MODE = 0;
+	public final static int REMOTE_MODE = 1;
 
 	private static final String TAG = "RecognitionActivity";
 
@@ -36,12 +43,17 @@ public class RecognitionActivity extends AppCompatActivity implements ClosedCapt
 	private CCToken mSelectedWord;
 	private ArrayList<CCToken> mTokenViews;
 	private RemoteConnection mRemoteConnection;
+	private int mMode;
+	private MediaPlayer mMediaPlayer;
 
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		Log.i(TAG, "onCreate");
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_recognition);
+
+		Intent intent = getIntent();
+		mMode = intent.getIntExtra(MODE, DEMO_MODE);
 
 		SpeechRecognizer recognizer = SpeechRecognizer.createSpeechRecognizer(getApplicationContext());
 		mCCGenerator = new ClosedCaptionGenerator(recognizer, this);
@@ -56,14 +68,44 @@ public class RecognitionActivity extends AppCompatActivity implements ClosedCapt
 		mTokenViews = new ArrayList<>();
 		mSelectedWord = null;
 		mIsRecognizing = false;
-		mRemoteConnection = new RemoteConnection("192.168.0.15", 9876);
+
+		mRemoteConnection = runningInRemoteMode() ? new RemoteConnection("192.168.0.15", 9876) : null;
+		if (runningInRemoteMode()) {
+			mMediaPlayer = new MediaPlayer();
+			mMediaPlayer.setAudioStreamType(AudioManager.STREAM_MUSIC);
+			try {
+				mMediaPlayer.setDataSource("rtsp://192.168.0.15:8554/test");
+				mMediaPlayer.setOnPreparedListener(new MediaPlayer.OnPreparedListener() {
+					@Override
+					public void onPrepared(MediaPlayer mediaPlayer) {
+						Log.i(TAG, "Media player prepared!!!");
+						mMediaPlayer.start();
+					}
+				});
+				mMediaPlayer.setOnBufferingUpdateListener(new MediaPlayer.OnBufferingUpdateListener() {
+					@Override
+					public void onBufferingUpdate(MediaPlayer mp, int percent) {
+						Log.i(TAG, "Media player is buffering: " + percent + "%");
+					}
+				});
+				mMediaPlayer.setOnErrorListener(new MediaPlayer.OnErrorListener() {
+					@Override
+					public boolean onError(MediaPlayer mp, int what, int extra) {
+						Log.e(TAG, "Media player error: " + what + ", " + extra);
+						return false;
+					}
+				});
+				mMediaPlayer.prepareAsync();
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+		}
 	}
 
 	@Override
 	protected void onResume() {
 		Log.i(TAG, "onResume");
 		super.onResume();
-		muteVolume();
 	}
 
 	@Override
@@ -78,8 +120,9 @@ public class RecognitionActivity extends AppCompatActivity implements ClosedCapt
 		Log.i(TAG, "onStop");
 		super.onStop();
 		restoreVolume();
-		if (mRemoteConnection.isConnected()) {
+		if (runningInRemoteMode() && mRemoteConnection.isConnected()) {
 			mRemoteConnection.disconnect();
+			mMediaPlayer.release();
 		}
 	}
 
@@ -97,8 +140,13 @@ public class RecognitionActivity extends AppCompatActivity implements ClosedCapt
 		if (mIsRecognizing) {
 			mToggleBtn.setImageTintList(ColorStateList.valueOf(getResources().getColor(android.R.color.holo_green_light)));
 			mCCGenerator.stop();
+			if (mMediaPlayer != null && mMediaPlayer.isPlaying()) {
+				mMediaPlayer.stop();
+			}
 		} else {
-			mRemoteConnection.connect();
+			if (runningInRemoteMode()) {
+				mRemoteConnection.connect();
+			}
 			mToggleBtn.setImageTintList(ColorStateList.valueOf(getResources().getColor(android.R.color.holo_red_dark)));
 			mCCGenerator.start();
 		}
@@ -122,11 +170,19 @@ public class RecognitionActivity extends AppCompatActivity implements ClosedCapt
 	}
 
 	@Override
+	public void onBeforeStart() {
+		AudioManager aMgr = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
+		mOriginalVolume = aMgr.getStreamVolume(AudioManager.STREAM_MUSIC);
+		aMgr.setStreamVolume(AudioManager.STREAM_MUSIC, 0, 0);
+	}
+
+	@Override
 	public void onRecognitionStarted() {
 		Log.v(TAG, "onRecognitionStarted");
 		mToggleBtn.setImageTintList(ColorStateList.valueOf(getResources().getColor(android.R.color.holo_red_dark)));
 		mToggleBtn.setEnabled(true);
 		mIsRecognizing = true;
+		restoreVolume();
 	}
 
 	@Override
@@ -146,12 +202,6 @@ public class RecognitionActivity extends AppCompatActivity implements ClosedCapt
 		tokenView.show(mContainer);
 	}
 
-	private void muteVolume() {
-		AudioManager aMgr = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
-		mOriginalVolume = aMgr.getStreamVolume(AudioManager.STREAM_MUSIC);
-		aMgr.setStreamVolume(AudioManager.STREAM_MUSIC, 0, 0);
-	}
-
 	private void restoreVolume() {
 		AudioManager aMgr = (AudioManager) getSystemService( Context.AUDIO_SERVICE );
 		aMgr.setStreamVolume( AudioManager.STREAM_MUSIC, mOriginalVolume, 0 );
@@ -169,16 +219,18 @@ public class RecognitionActivity extends AppCompatActivity implements ClosedCapt
 		for (CCToken v : mTokenViews) {
 			if (keepAccepting) {
 				String text = v.getText();
-				try {
-					JSONObject jsonToken = new JSONObject();
-					jsonToken.put("timestamp", v.getTimeStamp());
-					jsonToken.put("text", text);
-					jsonToken.put("confidence", v.getConfidence());
-					results.put(jsonToken);
+				if (runningInRemoteMode()) {
+					try {
+						JSONObject jsonToken = new JSONObject();
+						jsonToken.put("timestamp", v.getTimeStamp());
+						jsonToken.put("text", text);
+						jsonToken.put("confidence", v.getConfidence());
+						results.put(jsonToken);
+					} catch (JSONException e) {
+						Log.e(TAG, "Fail to serialize CCToken to JSON");
+					}
 				}
-				catch (JSONException e) {
-					Log.e(TAG, "Fail to serialize CCToken to JSON");
-				}
+
 				acceptString += text;
 				v.onDeleted(mContainer);
 				if (v == last) {
@@ -196,9 +248,12 @@ public class RecognitionActivity extends AppCompatActivity implements ClosedCapt
 
 		Log.i(TAG, "Accepted string: " + acceptString);
 		hideActionButtons();
-		Toast.makeText(this, acceptString, Toast.LENGTH_SHORT).show();
 
-		mRemoteConnection.send(results.toString());
+		if (runningInRemoteMode()) {
+			mRemoteConnection.send(results.toString());
+		} else {
+			Toast.makeText(this, acceptString, Toast.LENGTH_SHORT).show();
+		}
 	}
 
 	public void onWordDeleted( View view ) {
@@ -226,5 +281,9 @@ public class RecognitionActivity extends AppCompatActivity implements ClosedCapt
 		if (mSelectedWord == null) throw new AssertionError("No CCToken selected");
 
 		mSelectedWord.setSeparatorText(((Button) view).getText());
+	}
+
+	private boolean runningInRemoteMode() {
+		return mMode == REMOTE_MODE;
 	}
 }
