@@ -19,4 +19,4 @@ var srv = net.createServer( sock => {
     });
 });
 
-srv.listen({host: '192.168.0.15', port: 9876}, () => console.log('Server Created at %j', srv.address()));
+srv.listen({host: '192.168.0.6', port: 9876}, () => console.log('Server Created at %j', srv.address()));

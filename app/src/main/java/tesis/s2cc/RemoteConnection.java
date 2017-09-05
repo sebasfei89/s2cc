@@ -1,5 +1,6 @@
 package tesis.s2cc;
 
+import android.os.AsyncTask;
 import android.util.Log;
 
 import java.io.BufferedReader;
@@ -65,11 +66,17 @@ public class RemoteConnection {
 	}
 
 	public void send(String message){
-		try {
-			mSocketOutput.write(message.getBytes());
-		} catch (IOException e) {
-			Log.e(TAG, "Fail to send message to server: " + e.getMessage());
-		}
+		(new AsyncTask<String, Void, Void>() {
+			@Override
+			protected Void doInBackground(String... params) {
+				try {
+					mSocketOutput.write(params[0].getBytes());
+				} catch (IOException e) {
+					Log.e(TAG, "Fail to send message to server: " + e.getMessage());
+				}
+				return null;
+			}
+		}).execute(message);
 	}
 
 	public boolean isConnected() {

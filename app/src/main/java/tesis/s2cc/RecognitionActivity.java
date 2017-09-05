@@ -69,7 +69,7 @@ public class RecognitionActivity extends AppCompatActivity implements ClosedCapt
 		mSelectedWord = null;
 		mIsRecognizing = false;
 
-		mRemoteConnection = runningInRemoteMode() ? new RemoteConnection("192.168.0.15", 9876) : null;
+		mRemoteConnection = runningInRemoteMode() ? new RemoteConnection("192.168.0.6", 9876) : null;
 		if (runningInRemoteMode()) {
 			mMediaPlayer = new MediaPlayer();
 			mMediaPlayer.setAudioStreamType(AudioManager.STREAM_MUSIC);
